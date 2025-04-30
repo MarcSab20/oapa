@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  opa:
+    image: openpolicyagent/opa:latest
+    ports:
+      - "8181:8181"
+    command:
+      - "run"
+      - "--server"
+      - "--addr=0.0.0.0:8181"
+      - "--log-level=debug"
+      - "--set=decision_logs.console=true"
+      - "--config-file=/config/config.yaml"
+      - "/policies/authorization.rego"
+    volumes:
+      - ./opa/policies:/policies
+      - ./opa/data:/data
+      - ./opa/config.yaml:/config/config.yaml
+    restart: unless-stopped
+   

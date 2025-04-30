@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test OPA - Générateur de Curl</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            line-height: 1.6;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background-color: white;
+        }
+        .header {
+            background-color: #4285f4;
+            color: white;
+            padding: 15px;
+            margin: -20px -20px 20px -20px;
+            border-radius: 8px 8px 0 0;
+        }
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        h2 {
+            color: #4285f4;
+            border-bottom: 1px solid #e1e4e8;
+            padding-bottom: 10px;
+            margin-top: 25px;
+            font-size: 18px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 12px;
+            margin: 10px 0;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        pre {
+            background-color: #f6f8fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border: 1px solid #e1e4e8;
+            margin-top: 10px;
+        }
+        #response {
+            min-height: 100px;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .primary-button {
+            background-color: #4285f4;
+            color: white;
+        }
+        .primary-button:hover {
+            background-color: #3367d6;
+        }
+        .secondary-button {
+            background-color: #f1f3f4;
+            color: #202124;
+        }
+        .secondary-button:hover {
+            background-color: #e8eaed;
+        }
+        .template-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .success {
+            background-color: #e6f4ea;
+            border-color: #34a853;
+        }
+        .error {
+            background-color: #fce8e6;
+            border-color: #ea4335;
+        }
+        .clipboard-icon {
+            cursor: pointer;
+            padding: 5px;
+            float: right;
+            margin-top: -5px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .url-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .tab.active {
+            border-bottom: 2px solid #4285f4;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>Test OPA - Attribut Based Access Control</h1>
+            </div>
+            
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('request-tab')">Requête</div>
+                <div class="tab" onclick="switchTab('response-tab')">Réponse</div>
+                <div class="tab" onclick="switchTab('curl-tab')">Commande Curl</div>
+            </div>
+            
+            <div id="request-tab" class="tab-content active">
+                <h2>Scénarios prédéfinis</h2>
+                <div class="template-buttons">
+                    <button class="secondary-button" onclick="loadScenario('admin-read-public')">Admin lit document public</button>
+                    <button class="secondary-button" onclick="loadScenario('editor-update-own')">Éditeur modifie document de son département</button>
+                    <button class="secondary-button" onclick="loadScenario('user-read-confidential')">Utilisateur lit document confidentiel (autre dép.)</button>
+                    <button class="secondary-button" onclick="loadScenario('user-delete-public')">Utilisateur tente de supprimer document</button>
+                </div>
+                
+                <div class="form-group url-group">
+                    <label for="opa-url">URL du serveur OPA:</label>
+                    <input type="text" id="opa-url" value="http://localhost:8181/v1/data/authorization/decision">
+                </div>
+                
+                <h2>Requête JSON</h2>
+                <textarea id="request-json" placeholder="Éditez la requête JSON ici..."></textarea>
+                
+                <div class="button-row">
+                    <button class="primary-button" onclick="testOpa()">Tester la décision d'autorisation</button>
+                    <button class="secondary-button" onclick="generateCurlCommand()">Générer commande curl</button>
+                </div>
+            </div>
+            
+            <div id="response-tab" class="tab-content">
+                <h2>Réponse d'OPA</h2>
+                <pre id="response">En attente de test...</pre>
+            </div>
+            
+            <div id="curl-tab" class="tab-content">
+                <h2>Commande curl
+                    <span class="clipboard-icon" onclick="copyToClipboard('curl-command')">📋</span>
+                </h2>
+                <pre id="curl-command">La commande curl apparaîtra ici...</pre>
+                
+                <h2>Commande curl minifiée
+                    <span class="clipboard-icon" onclick="copyToClipboard('curl-command-minified')">📋</span>
+                </h2>
+                <pre id="curl-command-minified">La commande curl minifiée apparaîtra ici...</pre>
+                
+                <div class="button-row">
+                    <button class="secondary-button" onclick="copyToClipboard('curl-command')">Copier la commande complète</button>
+                    <button class="secondary-button" onclick="copyToClipboard('curl-command-minified')">Copier la commande minifiée</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Scénarios prédéfinis
+        const scenarios = {
+            'admin-read-public': {
+                input: {
+                    user: {
+                        id: 1,
+                        username: "admin",
+                        roles: ["ADMIN", "USER"],
+                        departments: ["IT"],
+                        enabled: true,
+                        attributes: [{ key: "clearance", value: "TOP_SECRET" }]
+                    },
+                    resource: {
+                        id: 1,
+                        name: "Document public",
+                        type: "DOCUMENT",
+                        securityClassification: "PUBLIC",
+                        department: "COMMON",
+                        ownerId: 1,
+                        tags: ["public", "documentation"],
+                        attributes: [{ key: "access_level", value: "public" }]
+                    },
+                    action: "read"
+                }
+            },
+            'editor-update-own': {
+                input: {
+                    user: {
+                        id: 2,
+                        username: "editor",
+                        roles: ["EDITOR", "USER"],
+                        departments: ["MARKETING"],
+                        enabled: true,
+                        attributes: [{ key: "clearance", value: "CONFIDENTIAL" }]
+                    },
+                    resource: {
+                        id: 3,
+                        name: "Plan marketing 2023",
+                        type: "PROJECT",
+                        securityClassification: "CONFIDENTIAL",
+                        department: "MARKETING",
+                        ownerId: 2,
+                        tags: ["confidential", "marketing", "plan"],
+                        attributes: [
+                            { key: "access_level", value: "department" },
+                            { key: "year", value: "2023" }
+                        ]
+                    },
+                    action: "update"
+                }
+            },
+            'user-read-confidential': {
+                input: {
+                    user: {
+                        id: 3,
+                        username: "user",
+                        roles: ["USER"],
+                        departments: ["SALES"],
+                        enabled: true,
+                        attributes: [{ key: "clearance", value: "PUBLIC" }]
+                    },
+                    resource: {
+                        id: 2,
+                        name: "Rapport IT confidentiel",
+                        type: "REPORT",
+                        securityClassification: "CONFIDENTIAL",
+                        department: "IT",
+                        ownerId: 1,
+                        tags: ["confidential", "it", "report"],
+                        attributes: [{ key: "access_level", value: "department" }]
+                    },
+                    action: "read"
+                }
+            },
+            'user-delete-public': {
+                input: {
+                    user: {
+                        id: 3,
+                        username: "user",
+                        roles: ["USER"],
+                        departments: ["SALES"],
+                        enabled: true,
+                        attributes: [{ key: "clearance", value: "PUBLIC" }]
+                    },
+                    resource: {
+                        id: 1,
+                        name: "Document public",
+                        type: "DOCUMENT",
+                        securityClassification: "PUBLIC",
+                        department: "COMMON",
+                        ownerId: 1,
+                        tags: ["public", "documentation"],
+                        attributes: [{ key: "access_level", value: "public" }]
+                    },
+                    action: "delete"
+                }
+            }
+        };
+        
+        // Charger un scénario prédéfini
+        function loadScenario(scenarioName) {
+            const scenario = scenarios[scenarioName];
+            if (scenario) {
+                document.getElementById('request-json').value = JSON.stringify(scenario, null, 2);
+                generateCurlCommand();
+            }
+        }
+        
+        // Fonction pour basculer entre les onglets
+        function switchTab(tabId) {
+            // Cacher tous les onglets
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Désélectionner tous les onglets
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Activer l'onglet sélectionné
+            document.getElementById(tabId).classList.add('active');
+            
+            // Activer le bouton d'onglet correspondant
+            document.querySelectorAll('.tab').forEach(tab => {
+                if (tab.getAttribute('onclick').includes(tabId)) {
+                    tab.classList.add('active');
+                }
+            });
+        }
+        
+        // Tester la décision d'autorisation OPA
+        function testOpa() {
+            const opaUrl = document.getElementById('opa-url').value;
+            const requestJsonStr = document.getElementById('request-json').value;
+            const responseElement = document.getElementById('response');
+            
+            try {
+                // Valider le JSON
+                const requestJson = JSON.parse(requestJsonStr);
+                
+                // Afficher un message de chargement
+                responseElement.textContent = "Envoi de la requête à OPA...";
+                responseElement.className = "";
+                
+                // Basculer vers l'onglet de réponse
+                switchTab('response-tab');
+                
+                // Envoyer la requête à OPA
+                fetch(opaUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestJson)
+                })
+                .then(response => {
+                    return response.json();
+                })
+                .then(data => {
+                    // Afficher la réponse formatée
+                    responseElement.textContent = JSON.stringify(data, null, 2);
+                    
+                    // Déterminer si l'accès est autorisé
+                    let allowed = false;
+                    if (data.result === true) {
+                        allowed = true;
+                    } else if (data.result && typeof data.result === 'object') {
+                        if (data.result.allow === true || data.result.allowed === true) {
+                            allowed = true;
+                        }
+                    }
+                    
+                    // Appliquer la classe CSS appropriée
+                    responseElement.className = allowed ? "success" : "error";
+                })
+                .catch(error => {
+                    responseElement.textContent = "Erreur: " + error.message;
+                    responseElement.className = "error";
+                });
+            } catch (error) {
+                responseElement.textContent = "Erreur: " + error.message;
+                responseElement.className = "error";
+                switchTab('response-tab');
+            }
+        }
+        
+        // Générer la commande curl
+        function generateCurlCommand() {
+            try {
+                const opaUrl = document.getElementById('opa-url').value;
+                const requestJsonStr = document.getElementById('request-json').value;
+                
+                // Valider le JSON
+                const requestJson = JSON.parse(requestJsonStr);
+                
+                // Variante 1: Commande curl avec JSON bien formaté et échappé
+                const jsonEscaped = JSON.stringify(requestJson)
+                    .replace(/"/g, '\\"');  // Échapper les guillemets pour bash
+                
+                const curlCommand = `curl -X POST ${opaUrl} \\
+  -H "Content-Type: application/json" \\
+  -d "${jsonEscaped}"`;
+                
+                document.getElementById('curl-command').textContent = curlCommand;
+                
+                // Variante 2: Commande curl avec JSON compact
+                const jsonCompact = JSON.stringify(requestJson);
+                
+                const curlCommandMinified = `curl -X POST ${opaUrl} -H "Content-Type: application/json" -d '${jsonCompact}'`;
+                
+                document.getElementById('curl-command-minified').textContent = curlCommandMinified;
+                
+                // Afficher l'onglet curl
+                switchTab('curl-tab');
+                
+            } catch (error) {
+                document.getElementById('curl-command').textContent = "Erreur: " + error.message;
+                document.getElementById('curl-command-minified').textContent = "Erreur: " + error.message;
+                switchTab('curl-tab');
+            }
+        }
+        
+        // Fonction pour copier le texte dans le presse-papiers
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    alert("Copié dans le presse-papiers !");
+                })
+                .catch(err => {
+                    alert("Impossible de copier le texte : " + err);
+                });
+        }
+        
+        // Charger le scénario par défaut au chargement de la page
+        window.onload = function() {
+            loadScenario('admin-read-public');
+        };
+    </script>
+</body>
+</html>
